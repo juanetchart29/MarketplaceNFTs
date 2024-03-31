@@ -1,54 +1,52 @@
-// SPDX-License-Indentidier: MIT
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Marketpace is ReentracyGuard {
-
-    address payable public inmutable feeAccount;
-    uint public inmutable feePercent;
+contract Marketplace is ReentrancyGuard {
+    address payable public immutable feeAccount;
+    uint public immutable feePercent;
     uint public itemCount;
 
-    struct item{
+    struct Item {
         uint itemId;
         IERC721 nft;
-        uint tokenID;
+        uint tokenId;
         uint price;
         address payable seller;
         bool sold;
     }
 
+    mapping (uint => Item) public items;
 
-    mapping (uint => Item)public items;
-
-    event offered(
-        uint itemID,
+    event Offered(
+        uint itemId,
         address indexed nft,
-        uint tokenID,
+        uint tokenId,
         uint price,
         address indexed seller
-        );
+    );
 
-    event bought(
-        uint itemID,
+    event Bought(
+        uint itemId,
         address indexed nft,
-        uint tokenID,
+        uint tokenId,
         uint price,
         address indexed seller,
         address buyer
     );
 
-    constructor(uint _feePercent){
+    constructor(uint _feePercent) {
         feeAccount = payable(msg.sender);
         feePercent = _feePercent;
     }
 
-    function makeItem(IERC721 _nft, uint _tokenId, uint _price) external nonReentrancy {
+    function makeItem(IERC721 _nft, uint _tokenId, uint _price) external nonReentrant {
         require(_price > 0);
         itemCount++;
-        _nft.transferFrom(msg.sender, address(this), _tokenId);
+        _nft.safeTransferFrom(msg.sender, address(this), _tokenId);
         items[itemCount] = Item(
             itemCount, 
             _nft,
@@ -57,26 +55,25 @@ contract Marketpace is ReentracyGuard {
             payable(msg.sender),
             false
         );  
-        emit offered(
-            uint itemCount, 
+        emit Offered(
+            itemCount, 
             address(_nft),
             _tokenId,
             _price,
             msg.sender
         );
-
     }
 
-    function pucharseItem(uint _itemId) external payable nonReentrancy {
-        uint _totalPrice = getTotalPrice(_itemId);
+    function purchaseItem(uint _itemId) external payable nonReentrant {
+        uint totalPrice = getTotalPrice(_itemId);
         Item storage item = items[_itemId];
         require(_itemId > 0 && _itemId <= itemCount);
-        require(msg.value >= _totalPrice);
+        require(msg.value >= totalPrice);
         require(!item.sold);
-        item.seller.transfer(_itemPrice);
-        feeAccount.transfer(_totalPrice - item.price);
+        item.seller.transfer(item.price);
+        feeAccount.transfer((totalPrice - item.price));
         item.sold = true;
-        item.nft.transferFrom(address(this), msg.sender, item.tokenId);
+        item.nft.safeTransferFrom(address(this), msg.sender, item.tokenId);
         emit Bought(
             _itemId, 
             address(item.nft),
@@ -85,14 +82,9 @@ contract Marketpace is ReentracyGuard {
             item.seller,
             msg.sender
         );
-            
-        }
-
-        function getTotalPrice(uint _itemId) view public returns(uint){
-            return((item[_itemId].price*(100 + feePercent))/100);
-            
-        }
     }
-        
 
-
+    function getTotalPrice(uint _itemId) view public returns(uint){
+        return ((items[_itemId].price * (100 + feePercent)) / 100);
+    }
+}

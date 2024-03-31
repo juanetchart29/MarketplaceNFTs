@@ -1,4 +1,4 @@
-// SPDX-License-Indentidier: MIT
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.19;
 
@@ -8,6 +8,7 @@ contract NFT is ERC721URIStorage {
     uint public tokenCount;
 
     constructor() ERC721("ClimbeNFT", "CLB") {}
+
     function mint(string memory _tokenURI) external returns (uint) {
         tokenCount++;
         _safeMint(msg.sender, tokenCount);
